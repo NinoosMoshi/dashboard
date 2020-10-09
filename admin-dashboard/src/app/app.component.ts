@@ -2,6 +2,7 @@ import { DashboardService } from './services/dashboard.service';
 import { SystemCpu } from './interface/system-cpu';
 import { SystemHealth } from './interface/system-health';
 import { Component, OnInit } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 
 @Component({
   selector: 'app-root',
@@ -26,6 +27,8 @@ export class AppComponent implements OnInit {
 
   ngOnInit(): void {
     this.getTraces();
+    this.getCpuUsage();
+    this.getSystemHealth();
   }
 
   private getTraces():void {
@@ -33,9 +36,55 @@ export class AppComponent implements OnInit {
       (response:any) => {
         console.log(response.traces);
         this.processTraces(response.traces);
+      },
+      (error:HttpErrorResponse) => {
+        alert(error.message)
       }
     );
   }
+
+
+  private getCpuUsage():void {
+    this.dashboardService.getSystemCpu().subscribe(
+      (response:SystemCpu) => {
+        console.log(response);
+        this.systemCpu = response;
+      },
+      (error:HttpErrorResponse) => {
+        alert(error.message)
+      }
+    );
+  }
+
+
+  private getSystemHealth():void {
+    this.dashboardService.getSystemHealth().subscribe(
+      (response:SystemHealth) => {
+        console.log(response);
+        this.systemHealth = response;
+        this.systemHealth.components.diskSpace.details.free = this.formatBytes(this.systemHealth.components.diskSpace.details.free);
+      },
+      (error:HttpErrorResponse) => {
+        alert(error.message)
+      }
+    );
+  }
+
+   private formatBytes(bytes: any): string {
+    if (bytes === 0) {
+       return '0 Bytes';
+      }
+    const k = 1024;
+    const dm = 2 < 0 ? 0 : 2;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+}
+
+
+
+
+
   processTraces(traces: any) {
     this.traceList = traces;
     this.traceList.forEach(trace =>{
@@ -67,6 +116,17 @@ export class AppComponent implements OnInit {
       }
     });
   }
+
+
+
+public onSelectTrace(trace:any): void{
+  this.selectedTrace = trace;
+  document.getElementById('trace-modal').click();
+}
+
+
+
+
 
 
 }
