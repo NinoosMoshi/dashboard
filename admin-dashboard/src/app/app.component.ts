@@ -1,9 +1,11 @@
+import { ChartType } from './enum/chart-type';
 import { DashboardService } from './services/dashboard.service';
 import { SystemCpu } from './interface/system-cpu';
 import { SystemHealth } from './interface/system-health';
 import { Component, OnInit } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import * as Chart from 'chart.js';
+
   
 
 @Component({
@@ -24,6 +26,8 @@ export class AppComponent implements OnInit {
   public http500Traces: any[] = [];
   public httpDefaultTraces: any[] = [];
   public timestamp: number;
+  public pageSize = 10;
+  public page = 1;
 
 
   constructor(private dashboardService:DashboardService){}
@@ -50,53 +54,66 @@ export class AppComponent implements OnInit {
   }
 
 
-  private initializeBarChart(): void {
-     const barChartElement = document.getElementById('barChart');
-     return new Chart(barChartElement, {
-      type: 'bar',
+  private initializeBarChart(): Chart {
+    const element = document.getElementById('barChart');
+    return new Chart(element, {
+      type: ChartType.BAR,
       data: {
           labels: ['200', '404', '400', '500'],
-          datasets: [{
-              data: [this.http200Traces.length, this.http404Traces.length, this.http400Traces.length, this.http500Traces.length],
-              backgroundColor: ['rgb(40, 167,69)','rgb(0,123,255)','rgb(253,126,20)','rgb(220,53,69)'],
-              borderColor: ['rgb(40, 167,69)','rgb(0,123,255)','rgb(253,126,20)','rgb(220,53,69)'],
+          datasets: [{data: [this.http200Traces.length, this.http404Traces.length, this.http400Traces.length, this.http500Traces.length],
+              backgroundColor: ['rgb(40,167,69)', 'rgb(0,123,255)', 'rgb(253,126,20)', 'rgb(220,53,69)'],
+              borderColor: ['rgb(40,167,69)', 'rgb(0,123,255)', 'rgb(253,126,20)', 'rgb(220,53,69)'],
               borderWidth: 3
           }]
       },
       options: {
-          title: {display:true, test: [`Last 100 Requests as of ${`Last 100 Requests as of ${this.formatDate(new Date())}`}`]},
-          legend: {display:false},
-          scales: {
-              yAxes: [{ ticks: {beginAtZero: true } }]
+        title: { display: true, text: [`Last 100 Requests as of ${this.formatDate(new Date())}`] },
+        legend: { display: false },
+        scales: {
+              yAxes: [{
+                  ticks: {
+                      beginAtZero: true
+                  }
+              }]
           }
       }
   });
-
   }
 
 
 
-  private initializePieChart(): void {
-    const pieChartElement = document.getElementById('pieChart');
-    return new Chart(pieChartElement, {
-     type: 'pie',
-     data: {
-         labels: ['200', '404', '400', '500'],
-         datasets: [{
-             data: [this.http200Traces.length, this.http404Traces.length, this.http400Traces.length, this.http500Traces.length],
-             backgroundColor: ['rgb(40, 167,69)','rgb(0,123,255)','rgb(253,126,20)','rgb(220,53,69)'],
-             borderColor: ['rgb(40, 167,69)','rgb(0,123,255)','rgb(253,126,20)','rgb(220,53,69)'],
-             borderWidth: 3
-         }]
-     },
-     options: {
-         title: {display:true, test: [`Last 100 Requests as of  ${this.formatDate(new Date())}`]},
-         legend: {display:true},
-         display:true
-     }
- });
+  private initializePieChart(): Chart {
+    const element = document.getElementById('pieChart');
+    return new Chart(element, {
+      type: ChartType.PIE,
+      data: {
+          labels: ['200', '404', '400', '500'],
+          datasets: [{data: [this.http200Traces.length, this.http404Traces.length, this.http400Traces.length, this.http500Traces.length],
+            backgroundColor: ['rgb(40,167,69)', 'rgb(0,123,255)', 'rgb(253,126,20)', 'rgb(220,53,69)'],
+            borderColor: ['rgb(40,167,69)', 'rgb(0,123,255)', 'rgb(253,126,20)', 'rgb(220,53,69)'],
+            borderWidth: 3
+          }]
+      },
+      options: {
+        title: { display: true, text: [`Last 100 Requests as of ${this.formatDate(new Date())}`] },
+        legend: { display: true },
+        display: true
+      }
+  });
+  }
 
- }
+
+  public exportTableToExcel(): void {
+    const downloadLink = document.createElement('a');
+    const dataType = 'application/vnd.ms-excel';
+    const table = document.getElementById('httptrace-table');
+    const tableHTML = table.outerHTML.replace(/ /g, '%20');
+    const filename = 'httptrace.xls';
+    document.body.appendChild(downloadLink);
+    downloadLink.href = 'data:' + dataType + ', ' + tableHTML;
+    downloadLink.download = filename;
+    downloadLink.click();
+}
 
 
  private formatDate(date: Date): string {
@@ -204,7 +221,9 @@ private formateUptime(timestamp: number): string {
 
 
   processTraces(traces: any) {
-    this.traceList = traces;
+    this.traceList = traces.filter((trace) =>{
+      return !trace.request.uri.includes('actuator');
+    });
     this.traceList.forEach(trace =>{
       switch(trace.response.status){
        case 200:
